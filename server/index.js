@@ -6,19 +6,15 @@ const app = express();
 
 const httpServer = createServer(app);
 
-const io = new Server(httpServer);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "http://localhost:3000",
+  },
+});
 
 const users = new Map();
 const socketUsers = new Map();
-users.set("fateme-123", {
-  socketId: "abc",
-  name: "Fateme",
-});
 
-users.set("ali-456", {
-  socketId: "xyz",
-  name: "Ali",
-});
 
 io.on("connection", (socket) => {
   console.log("Connected:", socket.id);
@@ -30,8 +26,7 @@ io.on("connection", (socket) => {
   });
 
   socketUsers.set(socket.id, userId);
-});
-
+  
   const onlineUsers = Array.from(users.entries()).map(
     ([userId, user]) => ({
       userId,
@@ -41,6 +36,8 @@ io.on("connection", (socket) => {
   );
 
   io.emit("users:online", onlineUsers);
+});
+
 
 
 
@@ -58,7 +55,6 @@ socket.on("private-message", ({ to, message }) => {
     to,
     message,
   };
-console.log("messageData:", messageData);
   // ارسال به گیرنده
   io.to(receiver.socketId).emit("private-message", messageData);
 
