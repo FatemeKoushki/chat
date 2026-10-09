@@ -61,6 +61,28 @@ socket.on("private-message", ({ to, message }) => {
   // ارسال به فرستنده
   socket.emit("private-message", messageData);
 });
+socket.on("typing:start", ({ to }) => {
+  const receiver = users.get(to);
+
+  if (!receiver) return;
+
+  const senderId = socketUsers.get(socket.id);
+
+  io.to(receiver.socketId).emit("typing:start", {
+    from: senderId,
+  });
+});
+socket.on("typing:stop", ({ to }) => {
+  const receiver = users.get(to);
+
+  if (!receiver) return;
+
+  const senderId = socketUsers.get(socket.id);
+
+  io.to(receiver.socketId).emit("typing:stop", {
+    from: senderId,
+  });
+});
 
 socket.on("disconnect", () => {
   const userId = socketUsers.get(socket.id);
@@ -69,6 +91,14 @@ socket.on("disconnect", () => {
     users.delete(userId);
     socketUsers.delete(socket.id);
   }
+  const onlineUsers = Array.from(users.entries()).map(
+    ([userId, user]) => ({
+      userId,
+      name: user.name,
+    })
+  );
+
+  io.emit("users:online", onlineUsers);
 });
   });
 

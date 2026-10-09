@@ -5,7 +5,7 @@ import { io } from "socket.io-client";
 
 export default function Chat() {
   const socketRef = useRef(null);
-
+const typingTimeoutRef = useRef(null);
   const currentUser = {
     userId: "ali1233",
     name: "Ali",
@@ -17,6 +17,7 @@ export default function Chat() {
 
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
 
   useEffect(() => {
     const socket = io("http://localhost:3001");
@@ -41,6 +42,16 @@ export default function Chat() {
       setMessages((prev) => [...prev, data]);
     });
 
+
+    socket.on("typing:start", (data) => {
+        console.log(`${data.from} is typing...`);
+        setIsTyping(true)
+        
+});
+socket.on("typing:stop", () => {
+  setIsTyping(false);
+});
+
     return () => {
       socket.off("connect");
       socket.off("users:online");
@@ -60,6 +71,18 @@ export default function Chat() {
 
     setMessage("");
   };
+  const handleTyping = () => {
+  socketRef.current?.emit("typing:start", {
+    to: selectedUser.userId,
+  });
+   clearTimeout(typingTimeoutRef.current);
+
+  typingTimeoutRef.current = setTimeout(() => {
+    socketRef.current?.emit("typing:stop", {
+      to: selectedUser.userId,
+    });
+  }, 1000);
+};
   const conversationMessages = messages.filter((item) => {
   if (!selectedUser) return false;
 
@@ -71,6 +94,7 @@ export default function Chat() {
   );
 });
 
+
   return (
     <div className="flex gap-6 p-6">
 
@@ -80,21 +104,25 @@ export default function Chat() {
           Online Users
         </h2>
 
-        {onlineUsers
-          .filter(
-            (user) =>
-              user.userId !== currentUser.userId
-          )
-          .map((user) => (
-            <button
-              key={user.userId}
-              onClick={() => setSelectedUser(user)}
-              className="mb-2 block w-full rounded-lg p-2 text-left hover:bg-gray-100"
-            >
-              {user.name}
-            </button>
-          ))}
+       {onlineUsers
+  .filter((user) => user.userId !== currentUser.userId)
+  .map((user) => (
+    <button
+      key={user.userId}
+      onClick={() => setSelectedUser(user)}
+      className="mb-2 flex w-full items-center gap-2 rounded-lg p-2 text-left hover:bg-gray-100"
+    >
+      <span className="h-2 w-2 rounded-full bg-green-500" />
+
+      {user.name}
+    </button>
+  ))}
       </div>
+      {isTyping && (
+  <p className="text-sm text-gray-500">
+    {selectedUser?.name} is typing...
+  </p>
+)}
 
       {/* Chat */}
       <div className="w-full max-w-md">
@@ -140,8 +168,11 @@ export default function Chat() {
 
           <input
             value={message}
-            onChange={(e) =>
-              setMessage(e.target.value)
+            onChange={(e) =>{
+              setMessage(e.target.value),
+              handleTyping()
+            }
+             
             }
             placeholder="پیام خود را بنویسید..."
             className="flex-1 rounded-lg border p-2"
