@@ -84,6 +84,25 @@ socket.on("typing:stop", ({ to }) => {
   });
 });
 
+socket.on("group:join", ({ room }) => {
+  socket.join(room);
+
+  console.log(`${socket.id} joined ${room}`);
+});
+socket.on("group:message", ({ room, message }) => {
+  const senderId = socketUsers.get(socket.id);
+
+  if (!senderId || !message.trim()) return;
+
+  const messageData = {
+    from: senderId,
+    room,
+    message,
+  };
+
+  io.to(room).emit("group:message", messageData);
+});
+
 socket.on("disconnect", () => {
   const userId = socketUsers.get(socket.id);
 

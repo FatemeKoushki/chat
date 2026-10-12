@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
-
+const GROUP_ROOM = "frontend-team";
 export default function Chat() {
   const socketRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -20,7 +20,8 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-
+  const [groupMessages, setGroupMessages] = useState([]);
+  const [groupMessage, setGroupMessage] = useState("");
   useEffect(() => {
     const socket = io("http://localhost:3001");
 
@@ -30,12 +31,18 @@ export default function Chat() {
       console.log(`${currentUser.name} connected:`, socket.id);
 
       socket.emit("user:join", currentUser);
+       socket.emit("group:join", {
+        room: GROUP_ROOM,
+        });
     });
 
     socket.on("users:online", (users) => {
       console.log("Online users:", users);
 
       setOnlineUsers(users);
+    });
+    socket.on("group:message", (data) => {
+      setGroupMessages((prev) => [...prev, data]);
     });
 
     socket.on("private-message", (data) => {
@@ -59,7 +66,7 @@ socket.on("typing:stop", () => {
       socket.off("connect");
       socket.off("users:online");
       socket.off("private-message");
-
+      socket.off("group:message");
       socket.disconnect();
     };
   }, []);
@@ -86,6 +93,16 @@ socket.on("typing:stop", () => {
     });
   }, 1000);
 };
+const sendGroupMessage = () => {
+  if (!groupMessage.trim()) return;
+
+  socketRef.current?.emit("group:message", {
+    room: GROUP_ROOM,
+    message: groupMessage,
+  });
+
+  setGroupMessage("");
+};
   const conversationMessages = messages.filter((item) => {
   if (!selectedUser) return false;
 
@@ -99,6 +116,8 @@ socket.on("typing:stop", () => {
 
 
   return (
+
+    <>
     <div className="flex gap-6 p-6">
 
       {/* Users */}
@@ -193,5 +212,40 @@ socket.on("typing:stop", () => {
 
       </div>
     </div>
+
+    <span>group chat</span>
+    <div className="mt-6 max-w-md rounded-xl border p-4">
+  <h2 className="mb-4 text-lg font-bold">
+    Frontend Team
+  </h2>
+
+  <div className="mb-4 space-y-3">
+    {groupMessages.map((item, index) => (
+      <div key={index} className="rounded-lg bg-gray-100 p-3">
+        <p className="text-xs text-gray-500">
+          {item.from}
+        </p>
+        <p>{item.message}</p>
+      </div>
+    ))}
+  </div>
+
+  <div className="flex gap-2">
+    <input
+      value={groupMessage}
+      onChange={(e) => setGroupMessage(e.target.value)}
+      placeholder="پیام گروهی..."
+      className="min-w-0 flex-1 rounded-lg border p-2"
+    />
+
+    <button
+      onClick={sendGroupMessage}
+      className="rounded-lg bg-blue-500 px-4 py-2 text-white"
+    >
+      Send
+    </button>
+  </div>
+</div>
+    </>
   );
 }
